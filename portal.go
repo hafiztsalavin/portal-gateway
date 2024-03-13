@@ -1,11 +1,13 @@
 package portalgateway
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"portal-gateway/api"
 	"portal-gateway/config"
 	"portal-gateway/log"
+	"portal-gateway/service"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -17,7 +19,14 @@ type Portal struct {
 }
 
 func NewPortal(conf *config.Config, log log.Logger) (*Portal, error) {
-	servicesRouter := api.NewServiceRouter()
+	ctx := context.Background()
+
+	serviceRegistry, err := service.NewServiceRegistry(ctx, conf.GlobalConfig.ServiceType, conf)
+	if err != nil {
+		return nil, err
+	}
+
+	servicesRouter := api.NewServiceRouter(serviceRegistry)
 
 	return &Portal{
 		service: servicesRouter,
