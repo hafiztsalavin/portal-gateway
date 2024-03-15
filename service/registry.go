@@ -9,6 +9,7 @@ import (
 type ServiceRegistry interface {
 	GetServices() []*BackendService
 	AddService(service *BackendService) error
+	GetService(name string) (*BackendService, error)
 }
 
 type baseRegistry struct {
@@ -42,6 +43,18 @@ func (r *baseRegistry) getServices() []*BackendService {
 	services := make([]*BackendService, len(r.services))
 	copy(services, r.services)
 	return services
+}
+
+func (r *baseRegistry) getService(name string) (*BackendService, error) {
+	var srv *BackendService
+
+	for i, s := range r.services {
+		if s.Name == name {
+			srv = r.services[i]
+			return srv, nil
+		}
+	}
+	return nil, ErrServiceNotFound{Name: name}
 }
 
 func (r *baseRegistry) addService(service *BackendService, apply func() error) error {

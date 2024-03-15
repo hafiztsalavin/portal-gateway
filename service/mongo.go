@@ -62,9 +62,14 @@ func (r *mongoServiceRegistry) GetServices() []*BackendService {
 	return r.getServices()
 }
 
-func (r *mongoServiceRegistry) loadServices() error {
-	var services []*BackendService
+func (r *mongoServiceRegistry) GetService(name string) (*BackendService, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 
+	return r.getService(name)
+}
+
+func (r *mongoServiceRegistry) loadServices() error {
 	cursor, err := r.collection.Find(r.ctx, bson.M{})
 	if err != nil {
 		return err
@@ -79,8 +84,7 @@ func (r *mongoServiceRegistry) loadServices() error {
 			return err
 		}
 
-		service.Init()
-		r.services = append(services, &service)
+		r.services = append(r.services, &service)
 	}
 
 	if err = cursor.Err(); err != nil {
