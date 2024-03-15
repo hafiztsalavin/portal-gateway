@@ -16,6 +16,7 @@ func NewServiceRouter(backendServices service.ServiceRegistry) *httprouter.Route
 
 	router.GET("/api/services", getServicesHandler(backendServices))
 	router.POST("/api/services", addServiceHandler(backendServices))
+	router.GET("/api/service/:name", getServiceHandler(backendServices))
 	return router
 }
 
@@ -36,6 +37,26 @@ func getServicesHandler(bs service.ServiceRegistry) httprouter.Handle {
 		}
 		prepareHeaders(w, http.StatusOK)
 		w.Write(jsonData)
+	}
+}
+
+func getServiceHandler(bs service.ServiceRegistry) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+		name := params.ByName("name")
+		service, err := bs.GetService(name)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		jsonData, err := json.Marshal(service)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		prepareHeaders(w, http.StatusOK)
+		w.Write(jsonData)
+
 	}
 }
 
@@ -91,7 +112,6 @@ func validateService(service *service.BackendService) error {
 		service.Timeout = 10
 	}
 
-	service.Init()
 	return nil
 }
 
