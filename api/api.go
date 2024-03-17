@@ -15,8 +15,10 @@ func NewServiceRouter(backendServices service.ServiceRegistry) *httprouter.Route
 	router.GET("/api/ping", getHealth())
 
 	router.GET("/api/services", getServicesHandler(backendServices))
-	router.POST("/api/services", addServiceHandler(backendServices))
 	router.GET("/api/service/:name", getServiceHandler(backendServices))
+	router.POST("/api/services", addServiceHandler(backendServices))
+	router.POST("/api/services/:name", updateServiceHandler(backendServices))
+	router.DELETE("/api/services/:name", removeServiceHandler(backendServices))
 	return router
 }
 
@@ -83,6 +85,55 @@ func addServiceHandler(bs service.ServiceRegistry) httprouter.Handle {
 
 		prepareHeaders(w, http.StatusCreated)
 		json.NewEncoder(w).Encode(service)
+	}
+}
+
+func updateServiceHandler(bs service.ServiceRegistry) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+		name := params.ByName("name")
+		var service service.BackendService
+		err := json.NewDecoder(r.Body).Decode(&service)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = validateService(&service)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = bs.UpdateService(name, &service)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		prepareHeaders(w, http.StatusOK)
+		json.NewEncoder(w).Encode(service)
+	}
+}
+
+func removeServiceHandler(bs service.ServiceRegistry) httprouter.Handle {
+	type Response struct {
+		Message string `json:"message,omitempty"`
+		Error   string `json:"error,omitempty"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+		name := params.ByName("name")
+
+		err := bs.RemoveService(name)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		prepareHeaders(w, http.StatusOK)
+		json.NewEncoder(w).Encode(Response{
+			Message: "Removed service " + name,
+		})
 	}
 }
 
