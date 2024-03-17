@@ -10,6 +10,8 @@ type ServiceRegistry interface {
 	GetServices() []*BackendService
 	AddService(service *BackendService) error
 	GetService(name string) (*BackendService, error)
+	UpdateService(name string, service *BackendService) error
+	RemoveService(name string) error
 }
 
 type baseRegistry struct {
@@ -74,4 +76,42 @@ func (r *baseRegistry) addService(service *BackendService, apply func() error) e
 	}
 
 	return nil
+}
+
+func (r *baseRegistry) updateService(name string, service *BackendService, apply func() error) error {
+	old := r.getServices()
+
+	for i, s := range r.services {
+		if s.Name == name {
+			r.services[i] = service
+			err := apply()
+			if err != nil {
+				r.services = old
+				return err
+			}
+
+			return nil
+		}
+	}
+
+	return ErrServiceNotFound{Name: name}
+}
+
+func (r *baseRegistry) removeService(name string, apply func() error) error {
+	old := r.getServices()
+
+	for i, s := range r.services {
+		if s.Name == name {
+			r.services = append(r.services[:i], r.services[i+1:]...)
+			err := apply()
+			if err != nil {
+				r.services = old
+				return err
+			}
+
+			return nil
+		}
+	}
+
+	return ErrServiceNotFound{Name: name}
 }

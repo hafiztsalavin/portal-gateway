@@ -93,3 +93,23 @@ func (r *mongoServiceRegistry) loadServices() error {
 
 	return nil
 }
+
+func (r *mongoServiceRegistry) UpdateService(name string, service *BackendService) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	return r.updateService(name, service, func() error {
+		_, err := r.collection.UpdateOne(r.ctx, bson.M{"name": service.Name}, bson.M{"$set": service})
+		return err
+	})
+}
+
+func (r *mongoServiceRegistry) RemoveService(name string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	return r.removeService(name, func() error {
+		_, err := r.collection.DeleteOne(r.ctx, bson.M{"name": name})
+		return err
+	})
+}
